@@ -10,6 +10,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
+
 import static com.durov.maks.winestoremvp.Constants.STORES_PER_PAGE;
 import static com.durov.maks.winestoremvp.Constants.TAG;
 
@@ -19,11 +24,13 @@ public class StoresPresenter implements MvpPresenter{
     private int nextPage;
     private MvpView mvpView;
     private MvpModel mvpModel;
-    private ArrayList<Store> stores;
+    private ArrayList<Store> storesArray;
+    private CompositeDisposable compositeDisposable;
 
     public StoresPresenter(MvpModel mvpModel){
+        compositeDisposable = new CompositeDisposable();
         this.mvpModel = mvpModel;
-        stores =new ArrayList<>();
+        storesArray =new ArrayList<>();
         isPageLast = false;
         loadNow = false;
         offlineMode = false;
@@ -33,7 +40,7 @@ public class StoresPresenter implements MvpPresenter{
     @Override
     public void attachView(MvpView mvpView) {
         this.mvpView = mvpView;
-        if(stores.isEmpty()){
+        if(storesArray.isEmpty()){
             this.loadStores();
         }
         else if(mvpView!=null){
@@ -45,10 +52,12 @@ public class StoresPresenter implements MvpPresenter{
     @Override
     public void detachView() {
         mvpView = null;
+        compositeDisposable.clear();
     }
     public ArrayList<Store> getStoresList(){
-        return stores;
+        return storesArray;
     }
+
 
 
     public void loadStores(){
@@ -58,32 +67,31 @@ public class StoresPresenter implements MvpPresenter{
         if(mvpView!=null){
             mvpView.setLoad(loadNow);
         }
-        mvpModel.loadDataFromNetwork(nextPage, new MvpModel.LoadDataCallback() {
+        compositeDisposable.add(mvpModel.loadDataFromNetwork(nextPage)
+        .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(new Consumer<StoreList>() {
             @Override
-            public void onLoadComplete(StoreList storeList){
-                if(offlineMode){
-                    offlineMode = false;
-                    if(mvpView!=null){
-                        mvpView.showYouAreOfflineToast(false);
-                    }
-                }
-                stores.addAll(storeList.getStores());
+            public void accept(StoreList storeList) throws Exception {
+                loadNow = false;
+                mvpView.setLoad(loadNow);
                 isPageLast = storeList.getPager().isFinalPage();
                 nextPage = storeList.getPager().getNextPage();
-                mvpModel.saveStoresListToDatabase(storeList.getStores());
+                storesArray.addAll(storeList.getStores());
                 if(mvpView!=null){
                     mvpView.dataChenge();
-                    loadNow = false;
-                    mvpView.setLoad(loadNow);
                 }
+                compositeDisposable.add(mvpModel.saveStoresListToDatabase(storeList.getStores())
+                .subscribeOn(Schedulers.io())
+                .subscribe());
             }
-
+        }, new Consumer<Throwable>() {
             @Override
-            public void onLoadError(Throwable throwable) {
+            public void accept(Throwable throwable) throws Exception {
                 handleError(throwable);
-                loadNow = false;
             }
-        });
+        }));
+
         }
     }
     private void handleError(Throwable throwable){
@@ -98,24 +106,29 @@ public class StoresPresenter implements MvpPresenter{
             if(mvpView!=null){
                 mvpView.showYouAreOfflineToast(offlineMode);
             }
-            mvpModel.loadDataFromDatabase(new MvpModel.LoadDataCallback(){
-                @Override
-                public void onLoadComplete(StoreList storeList) {
-                    stores.clear();
-                    stores.addAll(storeList.getStores());
-                    nextPage = stores.size()/STORES_PER_PAGE+1;
-                    loadNow =false;
-                    if(mvpView!=null){
-                        mvpView.dataChenge();
-                        mvpView.setLoad(loadNow);
-                    }
-                }
-                @Override
-                public void onLoadError(Throwable throwable) {
-                    throwable.printStackTrace();
-                    loadNow = false;
-                }
-            });
+            compositeDisposable.add(
+                    mvpModel.loadDataFromDatabase()
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new Consumer<List<Store>>() {
+                                @Override
+                                public void accept(List<Store> stores) throws Exception {
+                                    storesArray.clear();
+                                    storesArray.addAll(stores);
+                                    nextPage = stores.size() / STORES_PER_PAGE + 1;
+                                    loadNow = false;
+                                    if (mvpView != null) {
+                                        mvpView.dataChenge();
+                                        mvpView.setLoad(loadNow);
+                                    }
+                                }
+                            }, new Consumer<Throwable>() {
+                                @Override
+                                public void accept(final Throwable throwable) throws Exception {
+                                    throwable.printStackTrace();
+                                }
+                            }));
+
         }
     }
 

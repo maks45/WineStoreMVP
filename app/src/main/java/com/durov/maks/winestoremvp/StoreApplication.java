@@ -46,13 +46,30 @@ public class StoreApplication extends Application{
                // .allowMainThreadQueries() //need if you work in ui thread
                 .build();
         storeDao = storeDatabase.storeDao();
-        storesModel = new StoresModel(storeDao,requestStoreListInterface);
-        storesPresenter = new StoresPresenter(storesModel);
-
 
     }
 
+    public RequestProductListInterface getRequestProductListInterface() {
+        return requestProductListInterface;
+    }
+    public RequestStoreListInterface getRequestStoreListInterface() {
+        return requestStoreListInterface;
+    }
+
+    public void setStoresPresenterNull(){
+        storesPresenter =null;
+        storesModel = null;
+    }
     public StoresPresenter getStoresPresenter() {
+        if(storesPresenter == null){
+            storesPresenter = new StoresPresenter(getStoresModel());
+        }
         return storesPresenter;
+    }
+    private StoresModel getStoresModel(){
+        if(storesModel == null){
+            storesModel = new StoresModel(storeDao,requestStoreListInterface);
+        }
+        return storesModel;
     }
 }

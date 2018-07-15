@@ -60,6 +60,9 @@ public class MainActivity extends AppCompatActivity implements MvpView {
     public void onDestroy() {
         super.onDestroy();
         storesPresenter.detachView();
+        if(isFinishing()){
+            ((StoreApplication) getApplication()).setStoresPresenterNull();
+        }
     }
 
 

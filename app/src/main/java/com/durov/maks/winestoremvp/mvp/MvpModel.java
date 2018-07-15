@@ -6,13 +6,13 @@ import com.durov.maks.winestoremvp.data.Store;
 import com.durov.maks.winestoremvp.data.StoreList;
 
 import java.util.List;
+import java.util.function.Consumer;
+
+import io.reactivex.Completable;
+import io.reactivex.Single;
 
 public interface MvpModel {
-    void loadDataFromDatabase(LoadDataCallback loadDataCallback);
-    void loadDataFromNetwork(int nextPage, LoadDataCallback loadDataCallback);
-    void saveStoresListToDatabase(List<Store> stores);
-    interface LoadDataCallback {
-        void onLoadComplete(StoreList storeList);
-        void onLoadError(Throwable throwable);
-    }
+    Single loadDataFromDatabase();
+    Single loadDataFromNetwork(int nextPage);
+    Completable saveStoresListToDatabase(List<Store> stores);
 }
