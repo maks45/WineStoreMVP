@@ -52,13 +52,14 @@ public class StoresPresenter implements MvpPresenter{
     @Override
     public void detachView() {
         mvpView = null;
-        compositeDisposable.clear();
     }
     public ArrayList<Store> getStoresList(){
         return storesArray;
     }
 
-
+    public void clearCompositeDisposable(){
+        compositeDisposable.clear();
+    }
 
     public void loadStores(){
         Log.d(TAG,"Presenter load stores");
@@ -124,7 +125,7 @@ public class StoresPresenter implements MvpPresenter{
                                 }
                             }, new Consumer<Throwable>() {
                                 @Override
-                                public void accept(final Throwable throwable) throws Exception {
+                                public void accept(Throwable throwable) throws Exception {
                                     throwable.printStackTrace();
                                 }
                             }));

@@ -57,6 +57,7 @@ public class StoreApplication extends Application{
     }
 
     public void setStoresPresenterNull(){
+        storesPresenter.clearCompositeDisposable();
         storesPresenter =null;
         storesModel = null;
     }
